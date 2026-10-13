@@ -15,6 +15,8 @@ int APS5_VABI sceNpCreateAsyncRequest(const NpCreateAsyncRequestParameter* param
 int APS5_VABI sceNpDeleteRequest(int reqId);
 int APS5_VABI sceNpSetTimeout(int reqId, std::int32_t resolveRetry, std::uint32_t resolveTimeout,
     std::uint32_t connTimeout, std::uint32_t sendTimeout, std::uint32_t recvTimeout);
+int APS5_VABI sceNpGetUserIdByAccountId(std::uint64_t accountId, int* userId);
+void APS5_VABI sceNpRegisterGamePresenceCallback(void* callback, void* userdata);
 }
 
 namespace {
@@ -28,6 +30,19 @@ void Require(bool condition, const char* message) {
         std::fprintf(stderr, "NpManager: %s\n", message);
         std::abort();
     }
+}
+
+void PresenceCallback() {}
+
+void CheckAccountLookupAndPresence() {
+    int userId = 0x12345678;
+    Require(sceNpGetUserIdByAccountId(0, &userId) == InvalidArgument, "zero account id");
+    Require(userId == 0x12345678, "zero account id changed output");
+    Require(sceNpGetUserIdByAccountId(1, nullptr) == InvalidArgument, "null user output");
+    Require(sceNpGetUserIdByAccountId(1, &userId) == SignedOut, "offline account lookup must be signed out");
+    Require(userId == 0x12345678, "signed-out lookup changed output");
+    sceNpRegisterGamePresenceCallback(reinterpret_cast<void*>(&PresenceCallback), reinterpret_cast<void*>(0x1234));
+    sceNpRegisterGamePresenceCallback(nullptr, nullptr);
 }
 
 void CheckRequestTimeouts() {
@@ -59,6 +74,7 @@ void CheckRequestTimeouts() {
 }
 
 int main() {
+    CheckAccountLookupAndPresence();
     CheckRequestTimeouts();
     NpId npId{};
     std::memset(&npId, 0x5a, sizeof(npId));

@@ -7,5 +7,8 @@
 
 ### Functional
 
+- [sceNpGetUserIdByAccountId](../../../core/libs/prx/libSceNpManager/Export.cpp) uses the `(uint64_t accountId, userId*)` signature and argument checks from [shadPS4](https://github.com/shadps4-emu/shadPS4/blob/main/src/core/libraries/np/np_manager.cpp). AnyPS5 has no signed-in PSN account, so every nonzero account id returns `SCE_NP_ERROR_SIGNED_OUT` without touching the output. PS5 error precedence is unverified.
+- [sceNpRegisterGamePresenceCallback](../../../core/libs/prx/libSceNpManager/Export.cpp) retains the callback and user data using shadPS4's two-argument ABI. Passing null clears the retained callback. No presence event is delivered because the existing NP model remains signed out and has no live presence service.
+
 - [NP reachability callbacks](../../../core/libs/prx/libSceNpManager/Export.cpp) retain one callback and its user data; duplicate registration and unregistering an absent callback return the errors used by [shadPS4](https://github.com/shadps4-emu/shadPS4/blob/945dbc3cc3eee80ac3e053b438502ed936fa6bb2/src/core/libraries/np/np_manager.cpp). No callback is delivered because the existing NP model remains signed out with reachability unavailable.
 - [sceNpCheckNpAvailability](../../../core/libs/prx/libSceNpManager/Export.cpp) (libSceNpManager) - the `(req_id, online_id)` signature and the errors follow [shadPS4](https://github.com/shadps4-emu/shadPS4/blob/0fe263a4760dfbfa973366890061749b4af0de97/src/core/libraries/np/np_manager.cpp) with no user signed in to PSN: a null online id is `SCE_NP_ERROR_INVALID_ARGUMENT`, and any other online id matches no user, `SCE_NP_ERROR_USER_NOT_FOUND`; the request id is not checked, as in the other NpManager requests

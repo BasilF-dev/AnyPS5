@@ -23,6 +23,9 @@ namespace {
 std::mutex reachabilityMutex;
 void* reachabilityCallback = nullptr;
 void* reachabilityUserdata = nullptr;
+std::mutex gamePresenceMutex;
+void* gamePresenceCallback = nullptr;
+void* gamePresenceUserdata = nullptr;
 std::mutex requestMutex;
 std::unordered_set<int> liveRequests;
 
@@ -138,9 +141,9 @@ int APS5_VABI sceNpPollAsync(int req_id, int* result) {
 }
 
 void APS5_VABI sceNpRegisterGamePresenceCallback(void* callback, void* userdata) {
- (void)callback;
- (void)userdata;
- NotImplemented_nid_no_patch(__func__);
+    std::lock_guard lock(gamePresenceMutex);
+    gamePresenceCallback = callback;
+    gamePresenceUserdata = userdata;
 }
 
 int APS5_VABI sceNpRegisterNpReachabilityStateCallback(void* callback, void* userdata) {
@@ -238,9 +241,9 @@ int APS5_VABI sceNpUnregisterPremiumEventCallback(void) {
     return 0;
 }
 
-int APS5_VABI sceNpGetUserIdByAccountId() {
-    NotImplemented_nid_no_patch(__func__);
-    return 0;
+int APS5_VABI sceNpGetUserIdByAccountId(std::uint64_t account_id, int* user_id) {
+    if (account_id == 0 || user_id == nullptr) return SCE_NP_ERROR_INVALID_ARGUMENT;
+    return SCE_NP_ERROR_SIGNED_OUT;
 }
 
 int APS5_VABI sceNpGetSandboxInfo(void* sandbox_info) {
