@@ -48,6 +48,7 @@ bool formatOf(std::uint32_t param, Format& format) {
     switch (param) {
         case 1: format = {AUDIO_S16SYS, 1}; return true;
         case 2: format = {AUDIO_S16SYS, 2}; return true;
+        case 0x10:
         case 0x11: format = {AUDIO_F32SYS, 1}; return true;
         case 0x12: format = {AUDIO_F32SYS, 2}; return true;
         default: return false;
@@ -85,10 +86,7 @@ int checkArguments(std::uint32_t type, std::uint32_t index, std::uint32_t len, s
 }
 
 int openPort(std::uint32_t len, std::uint32_t freq, std::uint32_t param, const char* function) {
-    if (param == 0x10) {
-        NotImplemented_nid_no_patch(function);
-        return 0;
-    }
+    (void)function;
     Format format{};
     if (!formatOf(param, format)) return AUDIO_IN_ERROR_INVALID_PARAM;
     std::lock_guard lock(g_mutex);
@@ -180,10 +178,8 @@ int32_t APS5_VABI sceAudioInClose(int32_t handle) {
 int32_t APS5_VABI sceAudioInHqOpen(int32_t user_id, uint32_t type, uint32_t index, uint32_t len, uint32_t freq, uint32_t param) {
     (void)user_id;
     if (const int error = checkArguments(type, index, len, freq); error != 0) return error;
-    if (len != 128 || freq != 48000) {
-        NotImplemented_nid_no_patch(__func__);
-        return 0;
-    }
+    if (len != 128) return AUDIO_IN_ERROR_INVALID_SIZE;
+    if (freq != 48000) return AUDIO_IN_ERROR_INVALID_FREQ;
     return openPort(len, freq, param, __func__);
 }
 

@@ -66,12 +66,18 @@ void TestValidation() {
     Require(sceAudioInAsyncOpen(user, 0, 0, 385, 48000, 2) == invalidSize);
     Require(sceAudioInAsyncOpen(user, 0, 0, 256, 44100, 2) == invalidFreq);
     Require(sceAudioInAsyncOpen(user, 0, 0, 256, 48000, 0) == invalidParam);
-    Require(ReportsNotImplemented("sceAudioInHqOpen", [] { sceAudioInHqOpen(user, 0, 0, 256, 48000, 2); }));
-    Require(ReportsNotImplemented("sceAudioInHqOpen", [] { sceAudioInHqOpen(user, 0, 0, 128, 16000, 2); }));
+    Require(sceAudioInHqOpen(user, 0, 0, 256, 48000, 2) == invalidSize);
+    Require(sceAudioInHqOpen(user, 0, 0, 128, 16000, 2) == invalidFreq);
     Require(ReportsNotImplemented("sceAudioInAsyncOpen", [] { sceAudioInAsyncOpen(user, 0, 0, 384, 48000, 2); }));
-    Require(ReportsNotImplemented("sceAudioInOpen", [] { sceAudioInOpen(user, 0, 0, 256, 48000, 0x10); }));
-    Require(ReportsNotImplemented("sceAudioInHqOpen", [] { sceAudioInHqOpen(user, 0, 0, 128, 48000, 0x10); }));
-    Require(ReportsNotImplemented("sceAudioInAsyncOpen", [] { sceAudioInAsyncOpen(user, 0, 0, 128, 48000, 0x10); }));
+    const int floatMono = sceAudioInOpen(user, 0, 0, 256, 48000, 0x10);
+    Require(floatMono > 0);
+    Require(sceAudioInClose(floatMono) == 0);
+    const int hqFloatMono = sceAudioInHqOpen(user, 0, 0, 128, 48000, 0x10);
+    Require(hqFloatMono > 0);
+    Require(sceAudioInClose(hqFloatMono) == 0);
+    const int asyncFloatMono = sceAudioInAsyncOpen(user, 0, 0, 128, 48000, 0x10);
+    Require(asyncFloatMono > 0);
+    Require(sceAudioInClose(asyncFloatMono) == 0);
 }
 
 void TestCapture() {
