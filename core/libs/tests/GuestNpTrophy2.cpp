@@ -9,6 +9,7 @@ int APS5_VABI sceNpTrophy2UnregisterUnlockCallback();
 int APS5_VABI sceNpTrophy2GetGameInfo(int, int, NpTrophy2GameDetails*, NpTrophy2GameData*);
 int APS5_VABI sceNpTrophy2GetGroupInfo(int, int, int, NpTrophy2GroupDetails*, NpTrophy2GroupData*);
 int APS5_VABI sceNpTrophy2GetTrophyInfo(int, int, int, NpTrophy2Details*, NpTrophy2Data*);
+int APS5_VABI sceNpTrophy2GetRewardIcon(int, int, int, void*, std::size_t*);
 int APS5_VABI sceNpTrophy2ShowTrophyList(int);
 }
 
@@ -57,4 +58,13 @@ int main() {
     Require(sceNpTrophy2GetTrophyInfo(1, 1, 3, nullptr, &trophyData) == 0);
     Require(trophyData.trophy_id == 3);
     Require(ThrowsInvalidArgument([] { sceNpTrophy2GetTrophyInfo(1, 1, 3, nullptr, nullptr); }));
+
+    std::size_t rewardIconSize = 123;
+    bool rewardIconMissing = false;
+    try {
+        sceNpTrophy2GetRewardIcon(1, 1, 3, nullptr, &rewardIconSize);
+    } catch (const std::runtime_error& error) {
+        rewardIconMissing = std::string(error.what()) == "sceNpTrophy2GetRewardIcon: icon file not found";
+    }
+    Require(rewardIconMissing && rewardIconSize == 0);
 }

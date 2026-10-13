@@ -9,9 +9,11 @@ void APS5_VABI sceImeParamInit(Param* param);
 int APS5_VABI sceImeGetPanelSize(const Param* param, uint32_t* width, uint32_t* height);
 int APS5_VABI sceImeClose_nid_postfix(void);
 int APS5_VABI sceImeGetPanelPositionAndForm(PositionAndForm* form);
+int APS5_VABI sceImeOpen_nid_postfix(const Param* param, const ExtendedParam* extended);
 int APS5_VABI sceImeSetCaret(const Caret* caret);
 int APS5_VABI sceImeSetText(const char16_t* text, uint32_t length);
 int APS5_VABI sceImeSetTextGeometry(TextAreaMode mode, const TextGeometry* geometry);
+int APS5_VABI sceImeUpdate(EventHandler handler);
 int APS5_VABI sceImeKeyboardOpen(int32_t user_id, const KeyboardParam* param);
 int APS5_VABI sceImeKeyboardClose(int32_t user_id);
 int APS5_VABI sceImeKeyboardGetResourceId(int32_t user_id, KeyboardResourceIdArray* resource_ids);
@@ -128,6 +130,100 @@ static void CheckClosedPanel() {
     for (size_t i = 0; i < sizeof(form); ++i) Require(formBytes[i] == 0xa5, "panel position written without an open panel");
 }
 
+static void PanelHandler(void*, const ImeEvent*) {}
+static void OtherPanelHandler(void*, const ImeEvent*) {}
+
+static void CheckOpenPanel() {
+    constexpr int Busy = static_cast<int>(0x80bc0001u);
+    constexpr int NotOpened = static_cast<int>(0x80bc0002u);
+    constexpr int InvalidText = static_cast<int>(0x80bc0006u);
+    constexpr int InvalidUserId = static_cast<int>(0x80bc0010u);
+    constexpr int InvalidMaxTextLength = static_cast<int>(0x80bc0016u);
+    constexpr int InvalidInputTextBuffer = static_cast<int>(0x80bc0017u);
+    constexpr int InvalidPosX = static_cast<int>(0x80bc0018u);
+    constexpr int InvalidWork = static_cast<int>(0x80bc0020u);
+    constexpr int InvalidHandler = static_cast<int>(0x80bc0022u);
+    constexpr int InvalidParam = static_cast<int>(0x80bc0030u);
+    constexpr int InvalidAddress = static_cast<int>(0x80bc0031u);
+    constexpr int InvalidReserved = static_cast<int>(0x80bc0032u);
+
+    alignas(4) std::array<unsigned char, 0x5000> work{};
+    char16_t input[17] = u"hi";
+    Param param{};
+    param.user_id = 1;
+    param.max_text_length = 16;
+    param.input_text_buffer = input;
+    param.posx = 10.0f;
+    param.posy = 20.0f;
+    param.horizontal_alignment = 1;
+    param.vertical_alignment = 2;
+    param.work = work.data();
+    param.handler = PanelHandler;
+
+    Require(sceImeOpen_nid_postfix(nullptr, nullptr) == InvalidAddress, "open accepted a null parameter");
+    Param bad = param;
+    bad.user_id = -1;
+    Require(sceImeOpen_nid_postfix(&bad, nullptr) == InvalidUserId, "open accepted an invalid user");
+    bad = param;
+    bad.max_text_length = 0;
+    Require(sceImeOpen_nid_postfix(&bad, nullptr) == InvalidMaxTextLength, "open accepted zero text length");
+    bad = param;
+    bad.input_text_buffer = nullptr;
+    Require(sceImeOpen_nid_postfix(&bad, nullptr) == InvalidInputTextBuffer, "open accepted a null text buffer");
+    bad = param;
+    bad.posx = 1920.0f;
+    Require(sceImeOpen_nid_postfix(&bad, nullptr) == InvalidPosX, "open accepted an out-of-range x position");
+    bad = param;
+    bad.work = nullptr;
+    Require(sceImeOpen_nid_postfix(&bad, nullptr) == InvalidWork, "open accepted a null work area");
+    bad = param;
+    bad.handler = nullptr;
+    Require(sceImeOpen_nid_postfix(&bad, nullptr) == InvalidHandler, "open accepted a null handler");
+    bad = param;
+    bad.reserved[3] = 1;
+    Require(sceImeOpen_nid_postfix(&bad, nullptr) == InvalidReserved, "open accepted nonzero reserved bytes");
+    bad = param;
+    bad.option = 1 | 4;
+    Require(sceImeOpen_nid_postfix(&bad, nullptr) == InvalidParam, "open accepted multiline password mode");
+
+    Require(sceImeOpen_nid_postfix(&param, nullptr) == 0, "valid panel did not open");
+    Require(sceImeOpen_nid_postfix(&param, nullptr) == Busy, "second panel open was not busy");
+
+    PositionAndForm form{};
+    Require(sceImeGetPanelPositionAndForm(nullptr) == InvalidAddress, "open panel accepted a null form output");
+    Require(sceImeGetPanelPositionAndForm(&form) == 0, "panel form query failed");
+    Require(form.type == 0 && form.posx == 10.0f && form.posy == 20.0f &&
+            form.horizontal_alignment == 1 && form.vertical_alignment == 2 &&
+            form.width == 793 && form.height == 408,
+            "panel form did not reflect the open parameters");
+
+    Caret caret{};
+    caret.index = 2;
+    Require(sceImeSetCaret(&caret) == 0, "valid caret rejected");
+    caret.index = 3;
+    Require(sceImeSetCaret(&caret) == InvalidParam, "caret past the text was accepted");
+    Require(sceImeSetCaret(nullptr) == InvalidAddress, "null caret accepted while open");
+
+    const char16_t replacement[] = u"hello";
+    Require(sceImeSetText(replacement, 5) == 0, "valid replacement text rejected");
+    Require(std::memcmp(input, replacement, sizeof(replacement)) == 0, "replacement text not copied to the guest buffer");
+    const char16_t newline[] = u"bad\n";
+    Require(sceImeSetText(newline, 4) == InvalidText, "single-line panel accepted a newline");
+    Require(sceImeSetText(replacement, 17) == InvalidText, "text beyond the configured maximum was accepted");
+    Require(sceImeSetText(nullptr, 0) == InvalidAddress, "null replacement text accepted");
+
+    TextGeometry geometry{1.0f, 2.0f, 100, 20};
+    Require(sceImeSetTextGeometry(TextAreaMode::Preedit, &geometry) == 0, "valid text geometry rejected");
+    Require(sceImeSetTextGeometry(TextAreaMode::Edit, &geometry) == InvalidParam, "unsupported text geometry mode accepted");
+    Require(sceImeSetTextGeometry(TextAreaMode::Preedit, nullptr) == InvalidAddress, "null text geometry accepted");
+
+    Require(sceImeUpdate(PanelHandler) == 0, "panel handler update failed");
+    Require(sceImeUpdate(OtherPanelHandler) == NotOpened, "unregistered panel handler was accepted");
+    Require(sceImeClose_nid_postfix() == 0, "open panel did not close");
+    Require(sceImeClose_nid_postfix() == NotOpened, "closed panel closed twice");
+    Require(sceImeUpdate(PanelHandler) == NotOpened, "closed panel still accepted updates");
+}
+
 static void CheckKeyboardResourceIds() {
     constexpr int NotOpened = static_cast<int>(0x80bc0002u);
     constexpr int ConnectionFailed = static_cast<int>(0x80bc0004u);
@@ -159,5 +255,6 @@ int main() {
     CheckPanelSizes();
     CheckErrors();
     CheckClosedPanel();
+    CheckOpenPanel();
     CheckKeyboardResourceIds();
 }

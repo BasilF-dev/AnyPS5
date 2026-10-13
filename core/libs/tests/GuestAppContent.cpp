@@ -6,11 +6,17 @@
 #include <filesystem>
 #include <fstream>
 
+struct AppContentAddcontDownloadProgress {
+    std::uint64_t data_size;
+    std::uint64_t downloaded_size;
+};
+
 extern "C" {
 int APS5_VABI sceAppContentInitialize(const AppContentInitParam*, AppContentBootParam*);
 int APS5_VABI sceAppContentAddcontMount(uint32_t, const NpUnifiedEntitlementLabel*, AppContentMountPoint*);
 int APS5_VABI sceAppContentAddcontUnmount(const AppContentMountPoint*);
 int APS5_VABI sceAppContentAddcontEnqueueDownload(uint32_t, const NpUnifiedEntitlementLabel*);
+int APS5_VABI sceAppContentGetAddcontDownloadProgress(uint32_t, const NpUnifiedEntitlementLabel*, AppContentAddcontDownloadProgress*);
 int APS5_VABI sceAppContentTemporaryDataMount2(uint32_t, AppContentMountPoint*);
 int APS5_VABI sceAppContentTemporaryDataUnmount(const AppContentMountPoint*);
 int APS5_VABI sceAppContentTemporaryDataFormat(const AppContentMountPoint*);
@@ -87,6 +93,13 @@ int main() {
     Require(sceAppContentAddcontEnqueueDownload(7, &label) == ErrorNotFound);
     Require(sceAppContentAddcontEnqueueDownload(0, nullptr) == ErrorParameter);
     Require(sceAppContentAddcontMount(0, &label, &mountPoint) == ErrorNotFound);
+    AppContentAddcontDownloadProgress progress{0x1111111111111111ull, 0x2222222222222222ull};
+    const auto untouchedProgress = progress;
+    Require(sceAppContentGetAddcontDownloadProgress(0, &label, &progress) == ErrorNotFound);
+    Require(std::memcmp(&progress, &untouchedProgress, sizeof(progress)) == 0);
+    Require(sceAppContentGetAddcontDownloadProgress(0, nullptr, &progress) == ErrorParameter);
+    Require(std::memcmp(&progress, &untouchedProgress, sizeof(progress)) == 0);
+    Require(sceAppContentGetAddcontDownloadProgress(0, &label, nullptr) == ErrorParameter);
 
     std::filesystem::create_directory(directory / "temp0");
     { std::ofstream file(directory / "temp0" / "old.txt"); file << "previous run"; }

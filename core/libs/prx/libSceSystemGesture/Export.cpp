@@ -42,11 +42,10 @@ int APS5_VABI sceSystemGestureGetPrimitiveTouchEventByIndex(int32_t gesture_hand
 }
 
 int APS5_VABI sceSystemGestureGetPrimitiveTouchEventByPrimitiveID(int32_t gesture_handle, uint16_t primitiveId, SystemGesturePrimitiveTouchEvent* event) {
- (void)gesture_handle;
- (void)primitiveId;
- (void)event;
- NotImplemented_nid_no_patch(__func__);
- return 0;
+    (void)primitiveId;
+    if (gesture_handle != GESTURE_HANDLE) return SCE_SYSTEM_GESTURE_ERROR_INVALID_HANDLE;
+    if (event) *event = {};
+    return SCE_SYSTEM_GESTURE_ERROR_INDEX_OUT_OF_ARRAY;
 }
 
 int APS5_VABI sceSystemGestureGetPrimitiveTouchEvents(int32_t gesture_handle, SystemGesturePrimitiveTouchEvent* event_buffer, uint32_t capacity_of_buffer, uint32_t* number_of_event) {
@@ -63,12 +62,11 @@ int APS5_VABI sceSystemGestureGetPrimitiveTouchEventsCount(int32_t gesture_handl
 }
 
 int APS5_VABI sceSystemGestureGetTouchEventByEventID(int32_t gesture_handle, const SystemGestureTouchRecognizer* recognizer, uint32_t eventId, SystemGestureTouchEvent* event) {
- (void)gesture_handle;
- (void)recognizer;
- (void)eventId;
- (void)event;
- NotImplemented_nid_no_patch(__func__);
- return 0;
+    (void)eventId;
+    if (gesture_handle != GESTURE_HANDLE) return SCE_SYSTEM_GESTURE_ERROR_INVALID_HANDLE;
+    if (!recognizer) return SCE_SYSTEM_GESTURE_ERROR_INVALID_ARGUMENT;
+    if (event) *event = {};
+    return SCE_SYSTEM_GESTURE_ERROR_INDEX_OUT_OF_ARRAY;
 }
 
 int APS5_VABI sceSystemGestureGetTouchEventByIndex(int32_t gesture_handle, const SystemGestureTouchRecognizer* recognizer, uint32_t index, SystemGestureTouchEvent* event) {
@@ -95,11 +93,10 @@ int APS5_VABI sceSystemGestureGetTouchEventsCount(int32_t gesture_handle, const 
 }
 
 int APS5_VABI sceSystemGestureGetTouchRecognizerInformation(int32_t gesture_handle, const SystemGestureTouchRecognizer* recognizer, SystemGestureTouchRecognizerInformation* information) {
- (void)gesture_handle;
- (void)recognizer;
- (void)information;
- NotImplemented_nid_no_patch(__func__);
- return 0;
+    if (gesture_handle != GESTURE_HANDLE) return SCE_SYSTEM_GESTURE_ERROR_INVALID_HANDLE;
+    if (!recognizer || !information) return SCE_SYSTEM_GESTURE_ERROR_INVALID_ARGUMENT;
+    *information = {};
+    return 0;
 }
 
 int APS5_VABI sceSystemGestureInitializePrimitiveTouchRecognizer(const void* param) {
