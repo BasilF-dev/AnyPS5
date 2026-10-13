@@ -17,7 +17,7 @@ template <typename Call>
 bool Throws(Call call) {
     try {
         call();
-    } catch (const std::runtime_error&) {
+    } catch (const std::exception&) {
         return true;
     }
     return false;
@@ -25,9 +25,16 @@ bool Throws(Call call) {
 
 }
 
+void APS5_VABI ReportHandler(const void*, std::uintptr_t) {}
+
 int main() {
     std::uintptr_t handle = 0x1234;
     Require(Throws([&] { sceNgs2ReportRegisterHandler(5, nullptr, 0, &handle); }));
     Require(handle == 0x1234);
+    Require(Throws([&] { sceNgs2ReportRegisterHandler(5, reinterpret_cast<void*>(&ReportHandler), 0, nullptr); }));
+    Require(sceNgs2ReportRegisterHandler(5, reinterpret_cast<void*>(&ReportHandler), 0x55667788, &handle) == 0);
+    Require(handle != 0 && handle != 0x1234);
     Require(Throws([] { sceNgs2ReportUnregisterHandler(0x1234); }));
+    Require(sceNgs2ReportUnregisterHandler(handle) == 0);
+    Require(Throws([&] { sceNgs2ReportUnregisterHandler(handle); }));
 }
