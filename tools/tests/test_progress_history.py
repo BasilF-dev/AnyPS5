@@ -3,6 +3,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from xml.etree import ElementTree
 from datetime import date
 from pathlib import Path
 from unittest.mock import patch
@@ -50,9 +51,14 @@ class ProgressHistoryTests(unittest.TestCase):
                      **{name: {"done": i, "total": count, "percent": 100 * i / count} for name in ("libraries", "shaders")}}
                     for i in range(count)]
         short, medium, long = (progress_history.chart(series(count)) for count in (20, 100, 400))
-        self.assertEqual((short.count("rotate(60)"), short.count("<circle")), (20, 40))
-        self.assertEqual((medium.count("rotate(60)"), medium.count("<circle")), (14, 0))
-        self.assertEqual((long.count("rotate(60)"), long.count("<circle")), (14, 0))
+        for rendered, count in ((short, 20), (medium, 100), (long, 400)):
+            ElementTree.fromstring(rendered)
+            self.assertNotIn("rotate(", rendered)
+            self.assertEqual(rendered.count("<circle"), 4 * count)
+            self.assertIn("System libraries", rendered)
+            self.assertIn("GPU shader instructions", rendered)
+            self.assertIn(f"Declared: {count}", rendered)
+            self.assertIn("stroke-dasharray", rendered)
 
 
 if __name__ == "__main__":
